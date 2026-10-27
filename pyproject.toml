@@ -20,7 +20,6 @@ github-advi-usage-build = "github_advi_usage.build_vi_github_analysis:main"
 github-advi-usage-verify = "github_advi_usage.verify_vi_github_analysis:main"
 github-advi-usage-manual-review = "github_advi_usage.manual_review:main"
 github-advi-usage-random-review = "github_advi_usage.random_repo_review:main"
-github-advi-usage-search-from-manifest = "github_advi_usage.run_github_search_from_manifest:main"
 github-advi-usage-deep-resolve = "github_advi_usage.github_advi_deep_resolve:main"
 
 [tool.setuptools.packages.find]

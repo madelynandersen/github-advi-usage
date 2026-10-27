@@ -173,14 +173,17 @@ classification plus a few of its supporting call sites, and asks whether
 that classification looks correct. It's a QC audit trail — it doesn't change
 any classification itself; use `manual-review` for that.
 
-To rerun the exact GitHub queries behind the saved results instead of your
-own `--query`:
+## Search queries
 
-```bash
-github-advi-usage-search-from-manifest \
-    --db data/github-vi-software.sqlite \
-    --manifest github_advi_usage/github_query_manifest.csv
-```
+`fetch` runs every query in `github_advi_usage/github_query_manifest.csv`,
+which records each query with when it was run and how many results it
+returned. Queries GitHub caps at 1,000 results are split into `size:`
+windows automatically; the manifest's `size:` rows are the windows an
+earlier run split off, so `fetch` runs their base query once instead. Rows
+Q100–Q106 have not been run for the saved database yet.
+
+Use `--manifest path/to/other.csv` to search with a different manifest, or
+`--query "..."` (repeatable) to run specific queries instead.
 
 The classification rules themselves (what counts as "default" per package,
 what's ignored) are documented in `github_advi_usage/classification_rules.md`.

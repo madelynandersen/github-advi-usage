@@ -12,16 +12,25 @@ from .api import ApiClient
 from .config import Settings, settings
 from .db import connect, init_db
 from .github_advi import (
-    EXHAUSTIVE_GITHUB_ADVI_QUERIES,
+    QUERY_MANIFEST,
     classify_github_advi_calls,
     fetch_github_advi_report_tables,
+    manifest_queries,
     scan_all_pending_github_advi_files,
     search_github_advi_code_exhaustive,
 )
 
 
 def add_fetch_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--query", action="append", help="GitHub code-search query. May be repeated.")
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=QUERY_MANIFEST,
+        help="Query manifest CSV to search with. Defaults to the packaged github_query_manifest.csv.",
+    )
+    parser.add_argument(
+        "--query", action="append", help="GitHub code-search query to run instead of the manifest. May be repeated."
+    )
     parser.add_argument("--search-interval", type=float, default=6.2)
     parser.add_argument("--max-size", type=int, default=1_000_000)
     parser.add_argument("--min-size-window", type=int, default=1)
@@ -68,12 +77,14 @@ def add_analyze_arguments(parser: argparse.ArgumentParser) -> None:
 def run_fetch(conn: sqlite3.Connection, client: ApiClient, args: argparse.Namespace) -> tuple[int, int]:
     """Capability (1): search + scan GitHub to (re)build the raw database.
 
-    Exhaustive GitHub Code Search for every query, then fetches and parses
+    Exhaustive GitHub Code Search for every query in the manifest (or every
+    --query), then fetches and parses
     the matched files into github_advi_calls rows. Requires GITHUB_TOKEN. No
     CSVs are written here -- that's `analyze`'s job, run against the
     database this leaves behind.
     """
-    queries = args.query or EXHAUSTIVE_GITHUB_ADVI_QUERIES
+    queries = args.query or manifest_queries(args.manifest)
+    print(f"Running {len(queries)} GitHub queries")
     hit_count = search_github_advi_code_exhaustive(
         conn,
         client,

@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import multiprocessing
+import re
 import sqlite3
 import time
 from collections import defaultdict
@@ -19,75 +20,22 @@ from .api import ApiClient
 from .db import log_event, utc_now
 
 
-EXHAUSTIVE_GITHUB_ADVI_QUERIES = [
-    '"pm.fit(" language:Python',
-    '"pymc.fit(" language:Python',
-    '"pymc3.fit(" language:Python',
-    '"pm.variational.fit" language:Python',
-    '"pymc.variational.fit" language:Python',
-    '"pymc3.variational.fit" language:Python',
-    '"from pymc import fit" language:Python',
-    '"from pymc3 import fit" language:Python',
-    '"pm.fit" "method" "advi" language:Python',
-    '"pymc.fit" "method" "advi" language:Python',
-    '"pymc3.fit" "method" "advi" language:Python',
-    '"pm.fit" "fullrank_advi" language:Python',
-    '"pymc.fit" "fullrank_advi" language:Python',
-    '"pymc3.fit" "fullrank_advi" language:Python',
-    '"method=\\"advi\\"" language:Python',
-    "\"method='advi'\" language:Python",
-    '"method=\\"fullrank_advi\\"" language:Python',
-    "\"method='fullrank_advi'\" language:Python",
-    '"fullrank_advi" language:Python',
-    '"ADVI(" pymc language:Python',
-    '"FullRankADVI(" language:Python',
-    '"pm.ADVI" language:Python',
-    '"pymc.ADVI" language:Python',
-    '"pymc3.ADVI" language:Python',
-    '"ADVI" ".fit(" language:Python',
-    '"FullRankADVI" ".fit(" language:Python',
-    '"FullRankADVI" language:Python',
-    '"AutoDiagonalNormal" "SVI" language:Python',
-    '"AutoNormal" "SVI" language:Python',
-    '"AutoMultivariateNormal" "SVI" language:Python',
-    '"AutoLowRankMultivariateNormal" "SVI" language:Python',
-    '"AutoIAFNormal" "SVI" language:Python',
-    '"AutoLaplaceApproximation" "SVI" language:Python',
-    '"AutoGuideList" "SVI" language:Python',
-    '"SVI(" "autoguide" language:Python',
-    '"SVI(" ".run(" "numpyro" language:Python',
-    '"SVI(" ".step(" "pyro" language:Python',
-    '"svi.run(" language:Python',
-    '"svi.step(" language:Python',
-    '"model.variational(" language:Python',
-    '"variational(" "CmdStanModel" language:Python',
-    '"variational(" "StanModel" language:Python',
-    '"algorithm" "fullrank" "variational" language:Python',
-    '"algorithm=\\"fullrank\\"" language:Python',
-    "\"algorithm='fullrank'\" language:Python",
-    '"fullrank" "model.variational" language:Python',
-    '"fullrank" ".variational(" language:Python',
-    '"cmdstanpy" ".variational(" language:Python',
-    '"grad_samples" ".variational(" language:Python',
-    '"pystan" ".vb(" language:Python',
-    '"StanModel" ".vb(" language:Python',
-    '"sm.vb(" language:Python',
-    '"grad_samples" ".vb(" language:Python',
-    '"import pystan" "vb(" language:Python',
-    '"from pystan" "vb(" language:Python',
-    '"StanModel_cache" "vb(" language:Python',
-    '"output_samples" "vb(" language:Python',
-    '"meanfield" "vb(" language:Python',
-    '"fullrank" "vb(" language:Python',
-    '"fit_surrogate_posterior" language:Python',
-    '"from tensorflow_probability.vi import fit_surrogate_posterior" language:Python',
-    '"tfp.vi.fit_surrogate_posterior" language:Python',
-    '"build_factored_surrogate_posterior" language:Python',
-    '"build_affine_surrogate_posterior" language:Python',
-    '"operators=\\"tril\\"" "fit_surrogate_posterior" language:Python',
-    "\"operators='tril'\" \"fit_surrogate_posterior\" language:Python",
-    '"full_rank_surrogate_posterior" "fit_surrogate_posterior" language:Python',
-]
+QUERY_MANIFEST = Path(__file__).with_name("github_query_manifest.csv")
+
+
+def manifest_queries(manifest: Path = QUERY_MANIFEST) -> list[str]:
+    """The distinct base queries in a query manifest, in manifest order.
+
+    Rows for `size:` windows record sub-queries that an earlier run split off;
+    the search splits oversized queries by size itself, so those rows map back
+    to their base query.
+    """
+    with manifest.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    queries = [re.sub(r" size:\d+\.\.\d+$", "", row["query_string"]) for row in rows if row.get("query_string")]
+    if not queries:
+        raise ValueError(f"No query_string values found in {manifest}")
+    return list(dict.fromkeys(queries))
 
 
 @dataclass(frozen=True)
@@ -214,7 +162,7 @@ def search_github_advi_code_exhaustive(
     if not client.settings.github_token:
         raise RuntimeError("GITHUB_TOKEN is required for GitHub code search")
     total = 0
-    for query in queries or EXHAUSTIVE_GITHUB_ADVI_QUERIES:
+    for query in queries or manifest_queries():
         total += search_github_advi_code_exhaustive_query(
             conn,
             client,

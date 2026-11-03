@@ -430,7 +430,7 @@ def scan_github_advi_files(
             scanned += 1
             print(
                 f"TIMEOUT scanning {row['repo_full_name']}:{row['path']} after {SCAN_FILE_TIMEOUT_SECONDS}s "
-                f"— marked scanned, logged to {error_list_path}"
+                f"(marked scanned, logged to {error_list_path})"
             )
         except Exception as exc:
             set_github_file_status(conn, row["file_id"], "failed")

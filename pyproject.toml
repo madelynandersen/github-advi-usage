@@ -14,6 +14,13 @@ dependencies = [
   "requests>=2.31.0",
 ]
 
+[project.optional-dependencies]
+# the figure scripts (plot_*.py) and notebooks/default_vs_nondefault_usage.ipynb
+plots = [
+  "matplotlib>=3.7",
+  "pandas>=2.0",
+]
+
 [project.scripts]
 github-advi-usage = "github_advi_usage.cli:main"
 github-advi-usage-build = "github_advi_usage.build_vi_github_analysis:main"
